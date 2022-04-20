@@ -8,7 +8,7 @@ server.get('/fetch_word', async (request, reply) => {
   return 'Hello World!'
 })
 
-server.listen(5000, (err, address) => {
+server.listen(process.env.PORT || 5000, (err, address) => {
   if (err) {
     console.error(err)
     process.exit(1)
