@@ -122,11 +122,11 @@ const fetchWord = async (word: string) => {
     const data = await fetchWordData(word)
     const entryIds = await fetchEntryIds(data)
 
-    return await pReduce(entryIds, async (res: word[], curr: number) => {
+    return await pReduce(entryIds, async (res: word[], id: number) => {
         res.push({
-            id: curr,
-            readings: await fetchReadings(data, curr),
-            senses: await fetchSense(data, curr)
+            id,
+            readings: await fetchReadings(data, id),
+            senses: await fetchSense(data, id)
         })
 
         return res
