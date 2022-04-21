@@ -5,7 +5,7 @@ server.register(require('fastify-formbody'))
 server.register(require('fastify-cors'), {})
 
 server.get('/fetch_word', async (request, reply) => {
-  return 'Hello World!'
+  reply.send('Hello World!')
 })
 
 server.listen(process.env.PORT || 3000, '0.0.0.0', (err, address) => {
