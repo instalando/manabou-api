@@ -1,11 +1,20 @@
 import fastify from 'fastify'
+import searchWord from './src/searchWord.js'
+import fastifyFormbody from 'fastify-formbody'
+import fastifyCors from 'fastify-cors'
 const server = fastify()
 
-server.register(require('fastify-formbody'))
-server.register(require('fastify-cors'), {})
+server.register(fastifyFormbody)
+server.register(fastifyCors, {})
 
-server.get('/fetch_word', async (request, reply) => {
-  reply.send('Hello World!')
+server.get<{
+  Querystring: {
+    word: string
+  }
+}>('/fetch_word', async (request, reply) => {
+  const { word } = request.query
+
+  reply.send(await searchWord(word))
 })
 
 server.listen(process.env.PORT || 3000, '0.0.0.0', (err, address) => {

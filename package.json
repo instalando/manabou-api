@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node main.js"
@@ -16,6 +17,7 @@
     "fastify-formbody": "^5.2.0",
     "fastify-plugin": "^3.0.1",
     "knex": "^1.0.7",
+    "p-reduce": "^3.0.0",
     "typescript": "^4.6.3"
   },
   "keywords": [],
