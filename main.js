@@ -8,9 +8,9 @@ const server = (0, fastify_1.default)();
 server.register(require('fastify-formbody'));
 server.register(require('fastify-cors'), {});
 server.get('/fetch_word', async (request, reply) => {
-    return 'Hello World!';
+    reply.send('Hello World!');
 });
-server.listen(8080, (err, address) => {
+server.listen(process.env.PORT || 3000, '0.0.0.0', (err, address) => {
     if (err) {
         console.error(err);
         process.exit(1);
