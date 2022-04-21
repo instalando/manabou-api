@@ -57,7 +57,7 @@ const fetchWordData = async (word: string) => {
     return res
 }
 
-const fetchEntryIds = async (data: entry[]) => {
+const fetchEntryIds = async (data: entry[]): Promise<number[]> => {
     return data.map(item => item.entry_id)
         .filter((item, index, self) => self.indexOf(item) === index)
 }
@@ -65,7 +65,7 @@ const fetchEntryIds = async (data: entry[]) => {
 const fetchReadings = async (data: entry[], entryId: number): Promise<reading[]> => {
     const entries = data.filter(item => item.entry_id === entryId)
 
-    return await pReduce(entries, async (res: reading[], entry: entry) => {
+    return await pReduce(entries, async (res: reading[], entry: entry): Promise<reading[]> => {
         const checkIfReadingExists = res.filter(item =>
             item.kanji === entry.kanji &&
             item.kana === entry.kana
@@ -82,24 +82,24 @@ const fetchReadings = async (data: entry[], entryId: number): Promise<reading[]>
     }, [])
 }
 
-const fetchDefinitions = async (entry: entry[]) => {
+const fetchDefinitions = async (entry: entry[]): Promise<string> => {
     return entry
         .map(item => item.definition)
         .filter((item, index, self) => self.indexOf(item) === index)
         .join('; ')
 }
 
-const fetchPartOfSpeech = async (entry: entry[]) => {
+const fetchPartOfSpeech = async (entry: entry[]): Promise<string> => {
     return entry
         .map(item => item.part_of_speech)
         .filter((item, index, self) => self.indexOf(item) === index)
         .join(', ')
 }
 
-const fetchSense = async (data: entry[], entryId: number) => {
+const fetchSense = async (data: entry[], entryId: number): Promise<sense[]> => {
     const entries = data.filter(item => item.entry_id === entryId)
 
-    return await pReduce(entries, async (res: sense[], entry: entry) => {
+    return await pReduce(entries, async (res: sense[], entry: entry): Promise<sense[]> => {
         const checkIfSenseExists = res.filter(item =>
             item.id === entry.sense_id
         ).length === 1
@@ -118,7 +118,7 @@ const fetchSense = async (data: entry[], entryId: number) => {
     }, [])
 }
 
-const fetchWord = async (word: string) => {
+const fetchWord = async (word: string): Promise<word[]> => {
     const data = await fetchWordData(word)
     const entryIds = await fetchEntryIds(data)
 
