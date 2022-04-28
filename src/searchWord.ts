@@ -50,14 +50,22 @@ const fetchWordData = async (word: string): Promise<Entry[]> => {
         .leftJoin('kana_common', 'kana.id', '=', 'kana_common.kana_id')
         .where('kanji.value', 'LIKE', `${word}%`)
         .orWhere('kana.value', `${word}`)
-        .select({
-            entry_id: 'entry.id',
-            kanji: 'kanji.value',
-            kana: 'kana.value',
-            kanji_priority: 'kanji_common.priority',
-            kana_priority: 'kana_common.priority'
-        })
-        .orderByRaw('kanji_common.priority ASC NULLS LAST, kana_common.priority ASC NULLS LAST')
+        .select(db.raw(
+            `entry.id as entry_id, \
+            kanji.value as kanji, \
+            kana.value as kana, \
+            kanji_common.priority as kanji_priority, \
+            kana_common.priority as kana_priority, \
+            IIF(kanji.value = '${word}', 0, \
+                kanji_common.priority + LENGTH(kanji.value)) \
+                    as priority`
+                )
+            )
+        .orderByRaw(
+            'priority ASC NULLS LAST, \
+            kanji_common.priority ASC NULLS LAST, \
+            kana_common.priority ASC NULLS LAST'
+        )
 
     return res
 }
