@@ -66,6 +66,7 @@ const fetchWordData = async (word: string): Promise<Entry[]> => {
             kanji_common.priority ASC NULLS LAST, \
             kana_common.priority ASC NULLS LAST'
         )
+        .limit(15)
 
     return res
 }
