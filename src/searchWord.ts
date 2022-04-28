@@ -1,30 +1,37 @@
 import knex from 'knex'
 import pReduce from 'p-reduce';
 
-type entry = {
+type Entry = {
     entry_id: number
-    sense_id: number
     kanji: string
     kana: string
+    kanji_priority: number | null
+    kana_priority: number | null
+}
+
+type Reading = {
+    kanji: string
+    kana: string
+}
+
+type Sense = {
+    sense_id: number
+    entry_id: number
     definition: string
     part_of_speech: string
 }
 
-type reading = {
-    kanji: string
-    kana: string
-}
-
-type sense = {
-    id: number,
-    definition: string,
+type Senses = {
+    id: number
+    definition: string
     part_of_speech: string
 }
 
-type word = {
+type Word = {
     id: number
-    readings: reading[],
-    senses: sense[]
+    readings: Reading[]
+    senses: Senses[],
+
 }
 
 const db = knex({
@@ -35,39 +42,52 @@ const db = knex({
     useNullAsDefault: true
 })
 
-const fetchWordData = async (word: string) => {
-    const res = await db('entry')
-        .where('kanji.value', 'LIKE', `${word}%`)
-        .orWhere('kana.value', 'LIKE', `${word}%`)
-        .join('kanji', 'entry.id', '=', 'kanji.entry_id')
-        .join('kana', 'entry.id', '=', 'kana.entry_id')
-        .join('sense', 'entry.id', '=', 'sense.entry_id')
-        .join('definition', 'sense.id', '=', 'definition.sense_id')
-        .join('part_of_speech', 'sense.id', '=', 'part_of_speech.sense_id')
+const fetchWordData = async (word: string): Promise<Entry[]> => {
+    const res: Entry[] = await db('entry')
+        .leftJoin('kanji', 'entry.id', '=', 'kanji.entry_id')
+        .leftJoin('kana', 'entry.id', '=', 'kana.entry_id')
+        .leftJoin('kanji_common', 'kanji.id', '=', 'kanji_common.kanji_id')
+        .leftJoin('kana_common', 'kana.id', '=', 'kana_common.kana_id')
+        .where('kanji.value', `${word}`)
+        .orWhere('kana.value', `${word}`)
         .select({
             entry_id: 'entry.id',
-            sense_id: 'sense.id',
-            kanji_id: 'kanji.id',
             kanji: 'kanji.value',
-            kana_id: 'kana.id',
             kana: 'kana.value',
-            definition: 'definition.value',
-            part_of_speech: 'part_of_speech.value'
+            kanji_priority: 'kanji_common.priority',
+            kana_priority: 'kana_common.priority'
         })
-        .orderBy('kanji_id')
+        .orderByRaw('kanji_common.priority ASC NULLS LAST, kana_common.priority ASC NULLS LAST')
 
     return res
 }
 
-const fetchEntryIds = async (data: entry[]): Promise<number[]> => {
+const fetchEntryIds = async (data: Entry[]): Promise<number[]> => {
     return data.map(item => item.entry_id)
         .filter((item, index, self) => self.indexOf(item) === index)
 }
 
-const fetchReadings = async (data: entry[], entryId: number): Promise<reading[]> => {
+const fetchSenses = async (entryIds: number[]): Promise<Sense[]> => {
+    const res = await db('entry')
+        .leftJoin('sense', 'entry.id', 'sense.entry_id')
+        .leftJoin('definition', 'sense.id', 'definition.sense_id')
+        .leftJoin('part_of_speech', 'sense.id', 'part_of_speech.sense_id')
+        .whereIn('entry.id', entryIds)
+        .select({
+            entry_id: 'entry.id',
+            sense_id: 'sense.id',
+            definition: 'definition.value',
+            part_of_speech: 'part_of_speech.value'
+        })
+        .distinct('definition.value')
+
+    return res
+}
+
+const fetchReadings = async (data: Entry[], entryId: number): Promise<Reading[]> => {
     const entries = data.filter(item => item.entry_id === entryId)
 
-    return await pReduce(entries, async (res: reading[], entry: entry): Promise<reading[]> => {
+    return await pReduce(entries, async (res: Reading[], entry: Entry): Promise<Reading[]> => {
         const checkIfReadingExists = res.filter(item =>
             item.kanji === entry.kanji &&
             item.kana === entry.kana
@@ -84,24 +104,24 @@ const fetchReadings = async (data: entry[], entryId: number): Promise<reading[]>
     }, [])
 }
 
-const fetchDefinitions = async (entry: entry[]): Promise<string> => {
-    return entry
+const fetchDefinitions = async (senses: Sense[]): Promise<string> => {
+    return senses
         .map(item => item.definition)
         .filter((item, index, self) => self.indexOf(item) === index)
         .join('; ')
 }
 
-const fetchPartOfSpeech = async (entry: entry[]): Promise<string> => {
-    return entry
+const fetchPartOfSpeech = async (senses: Sense[]): Promise<string> => {
+    return senses
         .map(item => item.part_of_speech)
         .filter((item, index, self) => self.indexOf(item) === index)
         .join(', ')
 }
 
-const fetchSense = async (data: entry[], entryId: number): Promise<sense[]> => {
+const fetchSense = async (data: Sense[], entryId: number): Promise<Senses[]> => {
     const entries = data.filter(item => item.entry_id === entryId)
 
-    return await pReduce(entries, async (res: sense[], entry: entry): Promise<sense[]> => {
+    return await pReduce(entries, async (res: any[], entry: any): Promise<any[]> => {
         const checkIfSenseExists = res.filter(item =>
             item.id === entry.sense_id
         ).length === 1
@@ -112,6 +132,7 @@ const fetchSense = async (data: entry[], entryId: number): Promise<sense[]> => {
 
         res.push({
             id: entry.sense_id,
+            entry_id: entry.entry_id,
             definition: await fetchDefinitions(currentSense),
             part_of_speech: await fetchPartOfSpeech(currentSense)
         })
@@ -120,15 +141,16 @@ const fetchSense = async (data: entry[], entryId: number): Promise<sense[]> => {
     }, [])
 }
 
-const fetchWord = async (word: string): Promise<word[]> => {
-    const data = await fetchWordData(word)
+const fetchWord = async (word: string): Promise<Word[]> => {
+    const data: Entry[] = await fetchWordData(word)
     const entryIds = await fetchEntryIds(data)
+    const senses: Sense[] = await fetchSenses(entryIds)
 
-    return await pReduce(entryIds, async (res: word[], id: number) => {
+    return await pReduce(entryIds, async (res: Word[], id: number) => {
         res.push({
             id,
             readings: await fetchReadings(data, id),
-            senses: await fetchSense(data, id)
+            senses: await fetchSense(senses, id)
         })
 
         return res
