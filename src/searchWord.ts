@@ -48,7 +48,7 @@ const fetchWordData = async (word: string): Promise<Entry[]> => {
         .leftJoin('kana', 'entry.id', '=', 'kana.entry_id')
         .leftJoin('kanji_common', 'kanji.id', '=', 'kanji_common.kanji_id')
         .leftJoin('kana_common', 'kana.id', '=', 'kana_common.kana_id')
-        .where('kanji.value', `${word}`)
+        .where('kanji.value', 'LIKE', `${word}`)
         .orWhere('kana.value', `${word}`)
         .select({
             entry_id: 'entry.id',
